@@ -1,4 +1,5 @@
 extern crate clap;
+extern crate chrono;
 
 use std::env;
 use std::fs;
@@ -6,12 +7,13 @@ use std::path::Path;
 use std::process::Command;
 use std::io::Write;
 
+use chrono::Datelike;
 use clap::{Arg, App};
 
 fn main() {
     let matches = App::new("Project Initializer")
         .version("0.1.0")
-        .author("Alex V.")
+        .author("jalexvig")
         .about("Initialize your projects the smart way.")
         .arg(Arg::with_name("name")
             .value_name("NAME")
@@ -53,9 +55,14 @@ fn create_readme(name: &str) {
 
 fn create_license(license_name: &str) {
 
+    let now = chrono::Local::now();
+    let year = now.year().to_string();
+
+    let author = "Alex Vig";
+
     let license_text = match license_name {
-        "mit" => include_str!("resources/licenses/mit"),
-        _ => "hi",
+        "mit" => format!(include_str!("resources/licenses/mit"), year, author),
+        _ => format!("hi"),
     };
 
     fs::write("LICENSE", license_text).expect("failed to create license");

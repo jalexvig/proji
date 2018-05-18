@@ -5,3 +5,4 @@ authors = ["Alex Vig <jalexvig@gmail.com>"]
 
 [dependencies]
 clap = "2.31.2"
+chrono = "0.4.2"
