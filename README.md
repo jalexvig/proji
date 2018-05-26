@@ -1,11 +1,28 @@
 # proji
 
-PROJect Initialization commandline utility. Initially this is setup for Python3.
+PROJect Initialization commandline utility.
 
 ### example use
 
 ```
-proji project_name
+proji my_new_project
+```
+
+### options
+
+```
+USAGE:
+    proji [OPTIONS] <NAME>
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+    -p, --preferences <PREFERENCES>    Filepath for json preferences. [default: default]
+
+ARGS:
+    <NAME>    The directory to initialize project.
 ```
 
 # installation

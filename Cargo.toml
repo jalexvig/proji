@@ -6,3 +6,6 @@ authors = ["Alex Vig <jalexvig@gmail.com>"]
 [dependencies]
 clap = "2.31.2"
 chrono = "0.4.2"
+serde_json = "1.0"
+serde_derive = "1.0.59"
+serde = "1.0.59"
