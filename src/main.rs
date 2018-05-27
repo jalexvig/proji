@@ -1,4 +1,5 @@
 extern crate clap;
+extern crate fs_extra;
 extern crate serde_json;
 extern crate chrono;
 
@@ -12,6 +13,19 @@ use std::io::{Write};
 
 use chrono::Datelike;
 use clap::{Arg, App};
+
+macro_rules! incl_profiles {
+    ( $( $x:expr ),* ) => {
+        {
+            let mut profs = Vec::new();
+            $(
+                profs.push(($x, include_str!(concat!("resources/profiles/", $x, ".json"))));
+            )*
+
+            profs
+        }
+    };
+}
 
 fn main() {
 
@@ -84,14 +98,19 @@ fn get_pref(pref_name: &str) -> Value {
             match e.kind() {
                 ErrorKind::AlreadyExists => {},
                 _ => {
-                    panic!("error creating profile directory")
+                    panic!("error creating .proji directory in HOME")
                 }
             }
         },
         Ok(_) => {
-            let contents = include_str!("resources/profiles/default.json");
-            let fpath = dpath.join("default.json");
-            fs::write(fpath, contents).expect("failed to create default profile");
+
+            let prof_tups: Vec<(&str, &str)> = incl_profiles!("default", "python");
+
+            for (prof_name, prof_str) in prof_tups {
+                let fname = format!("{}{}", prof_name, ".json");
+                let fpath = dpath.join(&fname);
+                fs::write(fpath, prof_str).expect(&format!("failed to create profile: {}", prof_name));
+            }
         }
     }
 
