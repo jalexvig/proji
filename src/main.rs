@@ -14,18 +14,7 @@ use std::io::{Write};
 use chrono::Datelike;
 use clap::{Arg, App};
 
-macro_rules! incl_profiles {
-    ( $( $x:expr ),* ) => {
-        {
-            let mut profs = Vec::new();
-            $(
-                profs.push(($x, include_str!(concat!("resources/profiles/", $x, ".json"))));
-            )*
-
-            profs
-        }
-    };
-}
+const ALL_PROFILES: &[(&str, &[u8])] = &include!(concat!(env!("OUT_DIR"), "/all_profiles.rs"));
 
 fn main() {
 
@@ -104,11 +93,8 @@ fn get_pref(pref_name: &str) -> Value {
         },
         Ok(_) => {
 
-            let prof_tups: Vec<(&str, &str)> = incl_profiles!("default", "python");
-
-            for (prof_name, prof_str) in prof_tups {
-                let fname = format!("{}{}", prof_name, ".json");
-                let fpath = dpath.join(&fname);
+            for (prof_name, prof_str) in ALL_PROFILES {
+                let fpath = dpath.join(prof_name);
                 fs::write(fpath, prof_str).expect(&format!("failed to create profile: {}", prof_name));
             }
         }
