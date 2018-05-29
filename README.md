@@ -19,7 +19,7 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
-    -p, --preferences <PREFERENCES>    Filepath for json preferences. [default: default]
+    -p, --profile <PROFILE>    Filepath for json profile. [default: default]
 
 ARGS:
     <NAME>    The directory to initialize project.

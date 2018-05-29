@@ -27,16 +27,16 @@ fn main() {
             .help("The directory to initialize project.")
             .required(true)
             .index(1))
-        .arg(Arg::with_name("preferences")
+        .arg(Arg::with_name("profile")
             .short("p")
-            .long("preferences")
-            .value_name("PREFERENCES")
-            .help("Filepath for json preferences.")
+            .long("profile")
+            .value_name("PROFILE")
+            .help("Filepath for json profile.")
             .takes_value(true)
             .default_value("default"))
         .get_matches();
 
-    let prefs = get_pref(matches.value_of("preferences").unwrap());
+    let prof = get_prof(matches.value_of("profile").unwrap());
 
     let name_proj = matches.value_of("name").unwrap();
 
@@ -45,14 +45,14 @@ fn main() {
 
     create_readme(name_proj);
 
-    create_license(&prefs);
+    create_license(&prof);
 
-    execute_commands(&prefs);
+    execute_commands(&prof);
 }
 
-fn execute_commands(prefs: &Value) {
+fn execute_commands(prof: &Value) {
 
-    if let Value::Array(ref commands) = prefs["commands"] {
+    if let Value::Array(ref commands) = prof["commands"] {
         for c in commands {
             if let Some(c) = c.as_str() {
                 execute_command(c);
@@ -73,9 +73,9 @@ fn execute_command(command: &str) {
     }
 }
 
-fn get_pref(pref_name: &str) -> Value {
+fn get_prof(prof_name: &str) -> Value {
 
-    let fname = format!("{}{}", pref_name, ".json");
+    let fname = format!("{}{}", prof_name, ".json");
 
     let dpath = match std::env::home_dir() {
         Some(dpath_home) => dpath_home.join(".proji"),
@@ -100,9 +100,9 @@ fn get_pref(pref_name: &str) -> Value {
         }
     }
 
-    let fpath_prefs = dpath.join(fname);
+    let fpath_profs = dpath.join(fname);
 
-    let file = fs::File::open(fpath_prefs).expect(&format!("could not open profile: {}", pref_name));
+    let file = fs::File::open(fpath_profs).expect(&format!("could not open profile: {}", prof_name));
 
     serde_json::from_reader(file).expect("error reading json file")
 }
@@ -115,17 +115,17 @@ fn create_readme(name: &str) {
     fs::write("README.md", format!("# {}", name)).expect("failed to create readme");
 }
 
-fn create_license(prefs: &Value) {
+fn create_license(profs: &Value) {
 
     let now = chrono::Local::now();
     let year = now.year().to_string();
 
-    let name = match prefs["name"].as_str() {
+    let name = match profs["name"].as_str() {
         Some(n) => n,
         None => "[NAME]"
     };
 
-    let license_text = match prefs["license"].as_str() {
+    let license_text = match profs["license"].as_str() {
         Some(license_type) => {
             match license_type {
                 "mit" => Some(format!(include_str!("resources/licenses/mit"), year, name)),
