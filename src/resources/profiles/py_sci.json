@@ -1,0 +1,6 @@
+{
+  "inherits": ["python"],
+  "commands": [
+    "pip install ipython numpy scipy matplotlib seaborn pandas"
+  ]
+}

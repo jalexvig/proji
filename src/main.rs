@@ -1,5 +1,4 @@
 extern crate clap;
-extern crate fs_extra;
 extern crate serde_json;
 extern crate chrono;
 
@@ -13,6 +12,8 @@ use std::io::{Write};
 
 use chrono::Datelike;
 use clap::{Arg, App};
+use std::collections::HashMap;
+use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 const ALL_PROFILES: &[(&str, &[u8])] = &include!(concat!(env!("OUT_DIR"), "/all_profiles.rs"));
 
@@ -41,6 +42,7 @@ fn main() {
     let name_proj = matches.value_of("name").unwrap();
 
     create_git_repo(name_proj);
+
     create_gitignore();
 
     create_readme(name_proj);
@@ -50,30 +52,33 @@ fn main() {
     execute_commands(&prof);
 }
 
-fn execute_commands(prof: &Value) {
+fn execute_commands(prof: &HashMap<String, Value>) {
 
-    if let Value::Array(ref commands) = prof["commands"] {
+    if let Some(Value::Array(ref commands)) = prof.get("commands") {
+
+        let mut commands_str: Vec<&str> = vec![];
+
         for c in commands {
             if let Some(c) = c.as_str() {
-                execute_command(c);
+                commands_str.push(c);
             }
         }
+
+        let command = commands_str.join(" && ");
+
+        execute_command(&command);
     }
 }
 
 fn execute_command(command: &str) {
 
-    let command: Vec<&str> = command.split(' ').collect();
-
-    if let Some((first, tail)) = command.split_first() {
-        Command::new(first)
-            .args(tail)
-            .output()
-            .expect("failed to execute command");
-    }
+    Command::new("sh")
+        .args(&["-c", command])
+        .output()
+        .expect("failed to execute command");
 }
 
-fn get_prof(prof_name: &str) -> Value {
+fn get_prof(prof_name: &str) -> HashMap<String, Value> {
 
     let fname = format!("{}{}", prof_name, ".json");
 
@@ -100,11 +105,145 @@ fn get_prof(prof_name: &str) -> Value {
         }
     }
 
-    let fpath_profs = dpath.join(fname);
+    let mut prof_names = c3_linearize(fname, &dpath);
+    prof_names.reverse();
 
-    let file = fs::File::open(fpath_profs).expect(&format!("could not open profile: {}", prof_name));
+    load_profs(prof_names, &dpath)
+}
 
-    serde_json::from_reader(file).expect("error reading json file")
+fn load_profs(fnames: Vec<String>, dpath: &std::path::PathBuf) -> HashMap<String, Value> {
+
+    let mut res = HashMap::new();
+
+    for fname in fnames {
+
+        let fpath_prof = dpath.join(&fname);
+
+        let file = fs::File::open(fpath_prof).expect(&format!("could not open profile: {}", &fname));
+
+        let json: Value = serde_json::from_reader(file).expect("error reading json file");
+
+//        using entry pattern: https://stackoverflow.com/questions/30851464
+        if let Value::Object(m) = json {
+            for (k, val) in m {
+
+                match res.entry(k.to_string()) {
+                    Vacant(entry) => { entry.insert(val); },
+                    Occupied(mut entry) => {
+                        match entry.get_mut() {
+                            Value::Array(ref mut v_res) => {
+                                if let Value::Array(v_json) = val {
+                                    v_res.extend(v_json);
+                                } else {
+                                    println!("mismatched datatypes for key {}", &k);
+                                }
+                            },
+                            x => *x = val
+                        }
+                    },
+                }
+            }
+        } else {
+            println!("can't process profile {}", &fname)
+        }
+    }
+
+    res
+}
+
+fn c3_linearize(fname: String, dpath: &std::path::PathBuf) -> Vec<String> {
+
+    let fpath = dpath.join(&fname);
+
+    let file = fs::File::open(fpath).expect(&format!("could not open profile: {}", fname));
+
+    let json : Value = serde_json::from_reader(file).expect("error reading json file");
+
+    let parents: Vec<String> = match &json["inherits"] {
+        &Value::Null => {
+            return vec![fname.to_string()];
+        },
+        Value::Array(ref v) => {
+            let mut p : Vec<String>= vec![];
+            for elem in v {
+                if let Value::String(s) = elem {
+                    p.push(s.to_string());
+                } else {
+                    println!("couldnt parse profile {}", fname);
+                }
+            }
+            p
+        },
+        Value::String(v) => vec![v.to_string()],
+        _ => panic!("don't understand inherits attribute in profile {}", fname)
+    };
+
+    if parents.is_empty() {
+        return vec![fname.to_string()];
+    }
+
+    let mut parent_linearizations: Vec<Vec<String>> = vec![];
+
+    for mut parent in parents {
+        if !parent.ends_with(".json") {
+            parent.push_str(".json");
+        }
+        let lin = c3_linearize(parent, dpath);
+        parent_linearizations.push(lin);
+    }
+
+    let mut merged = c3_merge(parent_linearizations);
+
+    merged.insert(0, fname);
+
+    merged
+}
+
+fn c3_merge(mut ls: Vec<Vec<String>>) -> Vec<String> {
+
+    let mut res = vec![];
+
+    while !ls.is_empty() {
+        res.push(c3_merge_pass(&mut ls).expect("could not linearize inheritance"))
+    }
+
+    res
+}
+
+fn c3_merge_pass(ls: &mut Vec<Vec<String>>) -> Option<String> {
+
+    let mut res = None;
+
+    for v in ls.iter() {
+        let elem = v.first().unwrap();
+        let mut b = false;
+
+        for v2 in ls.iter() {
+            let (_, tail) = v2.split_at(1);
+            if tail.contains(elem) {
+                b = true;
+                break;
+            }
+        }
+
+        if !b {
+            res = Some(elem.to_string());
+            break;
+        }
+    }
+
+    if let Some(ref val) = res {
+        for i in (0..ls.len()).rev() {
+
+            ls[i].retain(|x| x != val);
+
+            if ls[i].is_empty() {
+                ls.remove(i);
+            }
+        }
+    }
+
+    res
 }
 
 fn create_gitignore() {
@@ -115,7 +254,7 @@ fn create_readme(name: &str) {
     fs::write("README.md", format!("# {}", name)).expect("failed to create readme");
 }
 
-fn create_license(profs: &Value) {
+fn create_license(profs: &HashMap<String, Value>) {
 
     let now = chrono::Local::now();
     let year = now.year().to_string();
