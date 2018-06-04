@@ -1,40 +1,43 @@
+extern crate chrono;
 extern crate clap;
 extern crate serde_json;
-extern crate chrono;
 
-use std::io::ErrorKind;
-use serde_json::{Value};
+use serde_json::Value;
 use std::env;
 use std::fs;
+use std::io::ErrorKind;
+use std::io::Write;
 use std::path::Path;
 use std::process::Command;
-use std::io::{Write};
 
 use chrono::Datelike;
-use clap::{Arg, App};
+use clap::{App, Arg};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::collections::HashMap;
-use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 const ALL_PROFILES: &[(&str, &[u8])] = &include!(concat!(env!("OUT_DIR"), "/all_profiles.rs"));
 
 fn main() {
-
     let matches = App::new("Project Initializer")
         .version("0.1.0")
         .author("jalexvig")
         .about("Initialize your projects the smart way.")
-        .arg(Arg::with_name("name")
-            .value_name("NAME")
-            .help("The directory to initialize project.")
-            .required(true)
-            .index(1))
-        .arg(Arg::with_name("profile")
-            .short("p")
-            .long("profile")
-            .value_name("PROFILE")
-            .help("Filepath for json profile.")
-            .takes_value(true)
-            .default_value("default"))
+        .arg(
+            Arg::with_name("name")
+                .value_name("NAME")
+                .help("The directory to initialize project.")
+                .required(true)
+                .index(1),
+        )
+        .arg(
+            Arg::with_name("profile")
+                .short("p")
+                .long("profile")
+                .value_name("PROFILE")
+                .help("Filepath for json profile.")
+                .takes_value(true)
+                .default_value("default"),
+        )
         .get_matches();
 
     let prof = get_prof(matches.value_of("profile").unwrap());
@@ -53,9 +56,7 @@ fn main() {
 }
 
 fn execute_commands(prof: &HashMap<String, Value>) {
-
     if let Some(Value::Array(ref commands)) = prof.get("commands") {
-
         let mut commands_str: Vec<&str> = vec![];
 
         for c in commands {
@@ -71,7 +72,6 @@ fn execute_commands(prof: &HashMap<String, Value>) {
 }
 
 fn execute_command(command: &str) {
-
     Command::new("sh")
         .args(&["-c", command])
         .output()
@@ -79,28 +79,23 @@ fn execute_command(command: &str) {
 }
 
 fn get_prof(prof_name: &str) -> HashMap<String, Value> {
-
     let fname = format!("{}{}", prof_name, ".json");
 
     let dpath = match std::env::home_dir() {
         Some(dpath_home) => dpath_home.join(".proji"),
-        None => panic!("could not find home directory")
+        None => panic!("could not find home directory"),
     };
 
     match fs::create_dir(&dpath) {
-        Err(e) => {
-            match e.kind() {
-                ErrorKind::AlreadyExists => {},
-                _ => {
-                    panic!("error creating .proji directory in HOME")
-                }
-            }
+        Err(e) => match e.kind() {
+            ErrorKind::AlreadyExists => {}
+            _ => panic!("error creating .proji directory in HOME"),
         },
         Ok(_) => {
-
             for (prof_name, prof_str) in ALL_PROFILES {
                 let fpath = dpath.join(prof_name);
-                fs::write(fpath, prof_str).expect(&format!("failed to create profile: {}", prof_name));
+                fs::write(fpath, prof_str)
+                    .expect(&format!("failed to create profile: {}", prof_name));
             }
         }
     }
@@ -112,34 +107,32 @@ fn get_prof(prof_name: &str) -> HashMap<String, Value> {
 }
 
 fn load_profs(fnames: Vec<String>, dpath: &std::path::PathBuf) -> HashMap<String, Value> {
-
     let mut res = HashMap::new();
 
     for fname in fnames {
-
         let fpath_prof = dpath.join(&fname);
 
-        let file = fs::File::open(fpath_prof).expect(&format!("could not open profile: {}", &fname));
+        let file =
+            fs::File::open(fpath_prof).expect(&format!("could not open profile: {}", &fname));
 
         let json: Value = serde_json::from_reader(file).expect("error reading json file");
 
-//        using entry pattern: https://stackoverflow.com/questions/30851464
+        //        using entry pattern: https://stackoverflow.com/questions/30851464
         if let Value::Object(m) = json {
             for (k, val) in m {
-
                 match res.entry(k.to_string()) {
-                    Vacant(entry) => { entry.insert(val); },
-                    Occupied(mut entry) => {
-                        match entry.get_mut() {
-                            Value::Array(ref mut v_res) => {
-                                if let Value::Array(v_json) = val {
-                                    v_res.extend(v_json);
-                                } else {
-                                    println!("mismatched datatypes for key {}", &k);
-                                }
-                            },
-                            x => *x = val
+                    Vacant(entry) => {
+                        entry.insert(val);
+                    }
+                    Occupied(mut entry) => match entry.get_mut() {
+                        Value::Array(ref mut v_res) => {
+                            if let Value::Array(v_json) = val {
+                                v_res.extend(v_json);
+                            } else {
+                                println!("mismatched datatypes for key {}", &k);
+                            }
                         }
+                        x => *x = val,
                     },
                 }
             }
@@ -152,19 +145,18 @@ fn load_profs(fnames: Vec<String>, dpath: &std::path::PathBuf) -> HashMap<String
 }
 
 fn c3_linearize(fname: String, dpath: &std::path::PathBuf) -> Vec<String> {
-
     let fpath = dpath.join(&fname);
 
     let file = fs::File::open(fpath).expect(&format!("could not open profile: {}", fname));
 
-    let json : Value = serde_json::from_reader(file).expect("error reading json file");
+    let json: Value = serde_json::from_reader(file).expect("error reading json file");
 
     let parents: Vec<String> = match &json["inherits"] {
         &Value::Null => {
             return vec![fname.to_string()];
-        },
+        }
         Value::Array(ref v) => {
-            let mut p : Vec<String>= vec![];
+            let mut p: Vec<String> = vec![];
             for elem in v {
                 if let Value::String(s) = elem {
                     p.push(s.to_string());
@@ -173,9 +165,9 @@ fn c3_linearize(fname: String, dpath: &std::path::PathBuf) -> Vec<String> {
                 }
             }
             p
-        },
+        }
         Value::String(v) => vec![v.to_string()],
-        _ => panic!("don't understand inherits attribute in profile {}", fname)
+        _ => panic!("don't understand inherits attribute in profile {}", fname),
     };
 
     if parents.is_empty() {
@@ -200,7 +192,6 @@ fn c3_linearize(fname: String, dpath: &std::path::PathBuf) -> Vec<String> {
 }
 
 fn c3_merge(mut ls: Vec<Vec<String>>) -> Vec<String> {
-
     let mut res = vec![];
 
     while !ls.is_empty() {
@@ -211,7 +202,6 @@ fn c3_merge(mut ls: Vec<Vec<String>>) -> Vec<String> {
 }
 
 fn c3_merge_pass(ls: &mut Vec<Vec<String>>) -> Option<String> {
-
     let mut res = None;
 
     for v in ls.iter() {
@@ -234,7 +224,6 @@ fn c3_merge_pass(ls: &mut Vec<Vec<String>>) -> Option<String> {
 
     if let Some(ref val) = res {
         for i in (0..ls.len()).rev() {
-
             ls[i].retain(|x| x != val);
 
             if ls[i].is_empty() {
@@ -255,23 +244,23 @@ fn create_readme(name: &str) {
 }
 
 fn create_license(profs: &HashMap<String, Value>) {
-
     let now = chrono::Local::now();
     let year = now.year().to_string();
 
     let name = match profs["name"].as_str() {
         Some(n) => n,
-        None => "[NAME]"
+        None => "[NAME]",
     };
 
     let license_text = match profs["license"].as_str() {
-        Some(license_type) => {
-            match license_type {
-                "mit" => Some(format!(include_str!("resources/licenses/mit"), year, name)),
-                _ => {
-                    println!("no license {} available. consider contributing it.", license_type);
-                    None
-                },
+        Some(license_type) => match license_type {
+            "mit" => Some(format!(include_str!("resources/licenses/mit"), year, name)),
+            _ => {
+                println!(
+                    "no license {} available. consider contributing it.",
+                    license_type
+                );
+                None
             }
         },
         None => None,
@@ -285,7 +274,7 @@ fn create_license(profs: &HashMap<String, Value>) {
 fn create_git_repo(name: &str) {
     match fs::create_dir(name) {
         Err(why) => println!("failed to create directory: {:?}", why.kind()),
-        Ok(_) => {},
+        Ok(_) => {}
     }
 
     let dpath = Path::new(name);
@@ -297,7 +286,10 @@ fn create_git_repo(name: &str) {
         .output()
         .expect("failed to initialize git repo");
 
-    let mut file = fs::OpenOptions::new().append(true).open(".git/info/exclude").unwrap();
+    let mut file = fs::OpenOptions::new()
+        .append(true)
+        .open(".git/info/exclude")
+        .unwrap();
 
     write!(file, "{}", include_str!("resources/gitexclude")).expect("failed to update gitexclude");
 }
