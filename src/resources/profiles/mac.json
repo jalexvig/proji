@@ -1,0 +1,5 @@
+{
+  "commands": [
+    "echo '*.DS_Store' >> .git/info/exclude"
+  ]
+}

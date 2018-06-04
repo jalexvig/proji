@@ -1,6 +1,7 @@
 {
   "inherits": ["default"],
   "commands": [
+    "echo 'venv' >> .gitignore",
     "python3 -m venv venv",
     "source venv/bin/activate"
   ]
