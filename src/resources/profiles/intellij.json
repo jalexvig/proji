@@ -1,3 +1,5 @@
+{
   "commands": [
     "echo '.idea' >> .git/info/exclude"
   ]
+}
