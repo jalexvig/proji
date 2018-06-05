@@ -262,6 +262,7 @@ fn create_license(profs: &HashMap<String, Value>) {
             )),
             "bsd2" => Some(format!(include_str!("resources/licenses/bsd2"), year, name)),
             "bsd3" => Some(format!(include_str!("resources/licenses/bsd3"), year, name)),
+            "mpl2" => Some(format!(include_str!("resources/licenses/mpl2"))),
             _ => {
                 println!(
                     "no license {} available. consider contributing it.",
