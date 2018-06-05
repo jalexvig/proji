@@ -71,15 +71,25 @@ Profiles are json files and specify a few things:
 
 `proji` supports inheritance using `"inherits"` json key and supplying a list of profiles to inherit from:
 
+*intellij.json*
+```json
+{
+  "commands": [
+    "echo '.idea' >> .git/info/exclude"
+  ]
+}
+```
+
 *python.json*
 ```json
 {
-  "inherits": ["default"],
+  "inherits": ["intellij", "default"],
   "commands": [
+    "echo 'venv' >> .gitignore",
     "python3 -m venv venv",
     "source venv/bin/activate"
   ]
 }
 ```
 
-A non-list attribute from a child will override the corresponding attribute from its parents. Commands from parents and children will both be run with parent commands running before children commands. [C3 linearization](https://en.wikipedia.org/wiki/C3_linearization) is used to figure out this order.
+A non-list attribute from a child will override the corresponding attribute from its parents. Commands from parents and children will both be run with parent commands running before children commands. In the case of multiple inheritance (see example above) [C3 linearization](https://en.wikipedia.org/wiki/C3_linearization) is used to figure out the order of inheritance. Commands from profiles further away in this linearization will be executed first.
