@@ -255,6 +255,11 @@ fn create_license(profs: &HashMap<String, Value>) {
     let license_text = match profs["license"].as_str() {
         Some(license_type) => match license_type {
             "mit" => Some(format!(include_str!("resources/licenses/mit"), year, name)),
+            "apache2" => Some(format!(
+                include_str!("resources/licenses/apache2"),
+                year,
+                name
+            )),
             _ => {
                 println!(
                     "no license {} available. consider contributing it.",
