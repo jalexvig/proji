@@ -115,7 +115,7 @@ fn load_profs(fnames: Vec<String>, dpath: &std::path::PathBuf) -> HashMap<String
         let file =
             fs::File::open(fpath_prof).expect(&format!("could not open profile: {}", &fname));
 
-        let json: Value = serde_json::from_reader(file).expect("error reading json file");
+        let json: Value = serde_json::from_reader(file).expect(&format!("error reading profile {}", &fname));
 
         //        using entry pattern: https://stackoverflow.com/questions/30851464
         if let Value::Object(m) = json {
@@ -149,7 +149,7 @@ fn c3_linearize(fname: String, dpath: &std::path::PathBuf) -> Vec<String> {
 
     let file = fs::File::open(fpath).expect(&format!("could not open profile: {}", fname));
 
-    let json: Value = serde_json::from_reader(file).expect("error reading json file");
+    let json: Value = serde_json::from_reader(file).expect(&format!("error reading profile {}", &fname));
 
     let parents: Vec<String> = match &json["inherits"] {
         &Value::Null => {
