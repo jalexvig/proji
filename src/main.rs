@@ -99,7 +99,7 @@ fn get_prof(prof_name: &str) -> HashMap<String, Value> {
         }
     }
 
-    let mut prof_names = c3_linearize(fname, &dpath);
+    let mut prof_names = c3_linearize(fname, &dpath, &std::collections::HashSet::new());
     prof_names.reverse();
 
     load_profs(prof_names, &dpath)
@@ -143,7 +143,15 @@ fn load_profs(fnames: Vec<String>, dpath: &std::path::PathBuf) -> HashMap<String
     res
 }
 
-fn c3_linearize(fname: String, dpath: &std::path::PathBuf) -> Vec<String> {
+fn c3_linearize(fname: String,
+                dpath: &std::path::PathBuf,
+                seen: &std::collections::HashSet<String>) -> Vec<String> {
+
+//    Can't just use deref coercion: https://stackoverflow.com/a/39149826/1953800
+    if seen.contains(&fname) {
+        panic!("Detected loop in profile inheritance");
+    }
+
     let fpath = dpath.join(&fname);
 
     let file = fs::File::open(fpath).expect(&format!("could not open profile: {}", fname));
@@ -160,7 +168,7 @@ fn c3_linearize(fname: String, dpath: &std::path::PathBuf) -> Vec<String> {
                 if let Value::String(s) = elem {
                     p.push(s.to_string());
                 } else {
-                    println!("couldnt parse profile {}", fname);
+                    println!("couldn't parse profile {}", fname);
                 }
             }
             p
@@ -175,11 +183,13 @@ fn c3_linearize(fname: String, dpath: &std::path::PathBuf) -> Vec<String> {
 
     let mut parent_linearizations: Vec<Vec<String>> = vec![];
 
+    let mut seen_updated = seen.clone();
+    seen_updated.insert(fname.clone());
     for mut parent in parents {
         if !parent.ends_with(".json") {
             parent.push_str(".json");
         }
-        let lin = c3_linearize(parent, dpath);
+        let lin = c3_linearize(parent, dpath, &seen_updated);
         parent_linearizations.push(lin);
     }
 
