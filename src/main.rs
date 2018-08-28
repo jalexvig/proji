@@ -6,7 +6,6 @@ use serde_json::Value;
 use std::env;
 use std::fs;
 use std::io::ErrorKind;
-use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
@@ -293,11 +292,4 @@ fn create_git_repo(name: &str) {
         .arg("init")
         .output()
         .expect("failed to initialize git repo");
-
-    let mut file = fs::OpenOptions::new()
-        .append(true)
-        .open(".git/info/exclude")
-        .unwrap();
-
-    write!(file, "{}", include_str!("resources/gitexclude")).expect("failed to update gitexclude");
 }
