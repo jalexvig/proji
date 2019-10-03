@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<Error>> {
         )?;
     };
 
-    writeln!(&mut all_profiles, r#"];"#, )?;
+    writeln!(&mut all_profiles, r#"]"#, )?;
 
     Ok(())
 }
